@@ -5,19 +5,22 @@ La API es la que utiliza la app móvil [`dropx_app`](https://github.com/yammadev
 
 ## Capturas
 
-**Sitio público**
+### Sitio público
 
 | Inicio | Rastreo | Ser aliado |
 |---|---|---|
 | ![Inicio](docs/screenshots/sitio-inicio.png) | ![Rastreo](docs/screenshots/sitio-rastreo.png) | ![Ser aliado](docs/screenshots/sitio-ser-aliado.png) |
 
-**Suite**
+### Suite
 
 | Dashboard | Paquetes |
 |---|---|
 | ![Dashboard](docs/screenshots/suite-dashboard.png) | ![Paquetes](docs/screenshots/suite-paquetes.png) |
+| **Nuevo paquete** | **Detalle paquete** |
 | ![Nuevo paquete](docs/screenshots/suite-nuevo-paquete.png) | ![Detalle paquete](docs/screenshots/suite-detalle.png) |
+| **Mapa** | **Repartidores** |
 | ![Mapa](docs/screenshots/suite-mapa.png) | ![Repartidores](docs/screenshots/suite-repartidores.png) |
+| **Managers** | **Reportes** |
 | ![Managers](docs/screenshots/suite-managers.png) | ![Reportes](docs/screenshots/suite-reportes.png) |
 
 ## Instalación y prueba
