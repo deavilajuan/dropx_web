@@ -22,7 +22,7 @@ Responde `200`:
 ```json
 {
   "token": "eyJhbGciOi...",
-  "user": { "id": 3, "name": "Courier", "email": "courier@dropx.com", "role": "courier" }
+  "user": { "id": 3, "name": "Jhon Doe", "email": "courier@dropx.com", "role": "courier" }
 }
 ```
 
@@ -38,7 +38,7 @@ Devuelve el usuario dueño del token. Requiere el header `Authorization: Bearer 
 Responde `200`:
 
 ```json
-{ "user": { "id": 3, "name": "Courier", "email": "courier@dropx.com", "role": "courier" } }
+{ "user": { "id": 3, "name": "Jhon Doe", "email": "courier@dropx.com", "role": "courier" } }
 ```
 
 | Código | Cuándo | Respuesta |
@@ -91,6 +91,33 @@ Responde `200`:
 
 Devuelve un paquete (`{"package": {...}}`) con los mismos campos. Responde `404` (`{"message": "Paquete no encontrado"}`) si no existe o no está asignado al usuario.
 
+### `PATCH /api/packages/<id>/status`
+
+Cambia el estado de un paquete asignado al usuario del token y registra el movimiento en el historial.
+
+Recibe:
+
+```json
+{ "status": "picked_up" }
+```
+
+Cambios permitidos:
+
+| Estado actual | Puede pasar a |
+|---|---|
+| `pending` | `picked_up`, `issue` |
+| `picked_up` | `delivered`, `issue` |
+| `issue` | `picked_up` |
+| `delivered` | ninguno |
+
+Responde `200` con el paquete actualizado (`{"package": {...}}`).
+
+| Código | Cuándo | Respuesta |
+|---|---|---|
+| `400` | El estado no existe | `{"message": "El estado no es válido"}` |
+| `404` | El paquete no existe o no está asignado al usuario | `{"message": "Paquete no encontrado"}` |
+| `409` | El cambio no está permitido | `{"message": "No se puede pasar de \"Entregado\" a \"Recogido\""}` |
+
 ## Probar en Postman
 
 1. Inicie el servidor: `flask --app app run`.
@@ -112,5 +139,4 @@ Invoke-RestMethod -Uri http://127.0.0.1:5000/api/auth/me -Headers @{ Authorizati
 
 ## Pendientes
 
-- Cambio de estado de una guía desde la app.
 - CORS, si la app Flutter se prueba en Chrome.

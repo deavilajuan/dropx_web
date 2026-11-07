@@ -7,7 +7,7 @@
 {# Mensajes flash de Flask (success, danger, warning, info) #}
 {% macro flashes() %}
     {% for category, message in get_flashed_messages(with_categories=true) %}
-        <div class="mb-4 flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold {{ ui.flash_tone.get(category, ui.flash_tone.info) }}" role="alert">
+        <div class="mb-4 flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-semibold {{ ui.flash_tone.get(category, ui.flash_tone.info) }}" role="alert"{% if category in ('success', 'info') %} data-autoclose{% endif %}>
             <span>{{ message }}</span>
             <button type="button" class="opacity-60 hover:opacity-100" aria-label="Cerrar" onclick="this.parentElement.remove()"><svg class="size-4" aria-hidden="true"><use href="#i-x"/></svg></button>
         </div>

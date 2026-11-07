@@ -1,8 +1,10 @@
+from datetime import datetime
+
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
 
 from app import db, jwt
-from app.models import STATUSES, Package, User
+from app.models import STATUSES, Package, PackageEvent, User
 
 # Todas las rutas de este archivo empiezan con /api
 bp = Blueprint('api', __name__, url_prefix='/api')
@@ -65,7 +67,37 @@ def package_detail(package_id):
     return jsonify(package=item.to_dict())
 
 
-# TO DO: Cambiar el estado de una guía desde la app.
+# Cambios de estado que puede hacer el repartidor: {estado actual: [estados permitidos]}
+TRANSITIONS = {
+    'pending': ['picked_up', 'issue'],
+    'picked_up': ['delivered', 'issue'],
+    'issue': ['picked_up'],
+    'delivered': [],
+}
+
+
+@bp.patch('/packages/<int:package_id>/status')
+@jwt_required()
+def change_status(package_id):
+    """Cambia el estado de un paquete asignado al repartidor del token."""
+    courier = db.session.get(User, int(get_jwt_identity()))
+    item = Package.query.filter_by(id=package_id, courier_id=courier.id).first()
+    if not item:
+        return jsonify(message='Paquete no encontrado'), 404
+
+    status = (request.get_json(silent=True) or {}).get('status')
+    if status not in STATUSES:
+        return jsonify(message='El estado no es válido'), 400
+    if status not in TRANSITIONS[item.status]:
+        return jsonify(message=f'No se puede pasar de "{STATUSES[item.status]}" a "{STATUSES[status]}"'), 409
+
+    item.status = status
+    item.delivered_at = datetime.now() if status == 'delivered' else None
+    item.events.append(PackageEvent(title=STATUSES[status], description=f'Actualizado por {courier.name}.'))
+    db.session.commit()
+    return jsonify(package=item.to_dict())
+
+
 # TO DO: Habilitar CORS (flask-cors) si la app Flutter se prueba en Chrome.
 
 

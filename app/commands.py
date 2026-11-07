@@ -15,11 +15,12 @@ from app.models import Package, PackageEvent, User
 # Carpeta principal del proyecto (donde vive el archivo .env)
 ROOT = Path(__file__).resolve().parent.parent
 
-# Usuarios iniciales: (nombre, correo, rol, variable del .env con la contraseña)
+# Usuarios iniciales: (prefijo de las variables del .env, nombre por defecto, correo, rol)
+# El nombre sale de <PREFIJO>_NAME y la contraseña de <PREFIJO>_PASSWORD
 USERS = [
-    ('Administrador', 'admin@dropx.com', 'admin', 'SEED_ADMIN_PASSWORD'),
-    ('Manager', 'manager@dropx.com', 'manager', 'SEED_MANAGER_PASSWORD'),
-    ('Courier', 'courier@dropx.com', 'courier', 'SEED_COURIER_PASSWORD'),
+    ('SEED_ADMIN', 'Administrador', 'admin@dropx.com', 'admin'),
+    ('SEED_MANAGER', 'Manager', 'manager@dropx.com', 'manager'),
+    ('SEED_COURIER', 'Jhon Doe', 'courier@dropx.com', 'courier'),
 ]
 
 
@@ -41,16 +42,16 @@ TEST_PEOPLE = ['Laura Gómez', 'Harry Cruz', 'Sofía Mendoza', 'Juan Cruz', 'Car
 
 def create_users():
     """Crea los usuarios iniciales. Los que ya existen se omiten."""
-    for name, email, role, password_var in USERS:
+    for prefix, default_name, email, role in USERS:
         if User.query.filter_by(email=email).first():
             click.echo(f'Ya existe: {email}')
             continue
 
-        password = os.getenv(password_var)
+        password = os.getenv(f'{prefix}_PASSWORD')
         if not password:
-            raise click.ClickException(f'Falta {password_var} en el archivo .env')
+            raise click.ClickException(f'Falta {prefix}_PASSWORD en el archivo .env')
 
-        user = User(name=name, email=email, role=role)
+        user = User(name=os.getenv(f'{prefix}_NAME') or default_name, email=email, role=role)
         user.set_password(password)
         db.session.add(user)
         click.echo(f'Creado: {email} ({role})')

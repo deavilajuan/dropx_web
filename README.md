@@ -1,6 +1,7 @@
 # DropX Web
 
-Panel web, sitio público y API del proyecto DropX (mensajería y logística en Cartagena de Indias), desarrollados con Flask y MySQL. La API es la que utiliza la app móvil [`dropx_app`](https://github.com/yammadev/dropx_app).
+Panel web, sitio público y API del proyecto DropX (mensajería y logística en Cartagena de Indias), desarrollados con Flask y MySQL.
+La API es la que utiliza la app móvil [`dropx_app`](https://github.com/yammadev/dropx_app).
 
 ## Capturas
 
@@ -20,7 +21,7 @@ Panel web, sitio público y API del proyecto DropX (mensajería y logística en 
 
 ## Instalación y prueba
 
-**Requisitos:** Python 3.10 o superior y MySQL encendido (en XAMPP, el módulo MySQL) con la base de datos `dropx` creada. No se necesita Node.
+Requisitos: Python 3.10 o superior y MySQL encendido (en XAMPP, el módulo MySQL) con la base de datos `dropx` creada. No se necesita Node.
 
 Terminal de VS Code, un comando por línea:
 
@@ -35,7 +36,7 @@ cp .env.example .env
 flask --app app key:generate
 ```
 
-Cambiar en el `.env` las contraseñas `SEED_*_PASSWORD` y, luego, cargar los datos de prueba y encender el servidor:
+Cambiar en el `.env` los nombres (`SEED_*_NAME`) y las contraseñas (`SEED_*_PASSWORD`) y, luego, cargar los datos de prueba y encender el servidor:
 
 ```bash
 # Datos de prueba y encender
@@ -43,7 +44,7 @@ flask --app app db:test
 flask --app app run --debug
 ```
 
-`db:test` reinicia la base de datos (pide confirmación) y crea los usuarios iniciales, 4 repartidores y 40 paquetes con su historial. Con `--packages 100` se puede cambiar la cantidad de paquetes.
+`db:test` reinicia la base de datos (pide confirmación) y crea los usuarios iniciales, 4 repartidores y 40 paquetes con su historial. Con `--packages 100` cambia la cantidad de paquetes.
 
 El sitio queda en <http://127.0.0.1:5000> y la Suite en <http://127.0.0.1:5000/suite/login>. Las contraseñas son las definidas en el `.env`.
 
@@ -51,10 +52,10 @@ El sitio queda en <http://127.0.0.1:5000> y la Suite en <http://127.0.0.1:5000/s
 |---|---|---|
 | Administrador | `admin@dropx.com` | `admin` |
 | Manager | `manager@dropx.com` | `manager` |
-| Courier | `courier@dropx.com` | `courier` |
+| Jhon Doe | `courier@dropx.com` | `courier` |
 | Repartidores de prueba | `ana@dropx.com`, `carlos@dropx.com`, `luis@dropx.com`, `maria@dropx.com` | `courier` |
 
-**¿Qué revisar?** Como `admin` se ven todas las secciones y se puede eliminar; como `manager` no aparecen Managers ni Reportes y no se puede eliminar; el rastreo público se prueba en <http://127.0.0.1:5000/rastreo> con una guía como `DX-000001`; y la API con Postman, como se explica en [docs/api.md](docs/api.md).
+Qué revisar: como `admin` se ven todas las secciones y se puede eliminar; como `manager` no aparecen Managers ni Reportes y no se puede eliminar; el rastreo público se prueba en <http://127.0.0.1:5000/rastreo> con una guía como `DX-000001`; y la API con Postman, como se explica en [docs/api.md](docs/api.md).
 
 ### Comandos
 
@@ -94,7 +95,7 @@ Toda la operación está limitada a Cartagena de Indias.
 | `manager` | Crea y edita paquetes y repartidores (no elimina) | Suite |
 | `courier` | Reparte los paquetes | App móvil |
 
-**Estados de una guía:** `Pendiente`, `Recogido`, `Entregado` y `Con novedad`.
+Estados de una guía: **Pendiente**, **Recogido**, **Entregado** y **Con novedad**.
 El número de guía se asigna automáticamente al crear el paquete: el siguiente disponible, con el formato `DX-000001`.
 
 ## API
@@ -110,7 +111,7 @@ Autenticación con JWT para la app móvil. Las rutas están documentadas en [doc
 | `DB_SSL_CA` | Opcional. Ruta del certificado `.pem` para servicios en la nube que exigen SSL (ej: Aiven). |
 | `JWT_EXPIRES_HOURS` | Duración del token de la API (por defecto, 168 horas = 7 días). |
 | `WHATSAPP_ADVISOR_NUMBER` | Número del asesor para el formulario de contacto. |
-| `SEED_*_PASSWORD` | Contraseñas de los usuarios que crea `db:seed`. |
+| `SEED_*_NAME`, `SEED_*_PASSWORD` | Nombres y contraseñas de los usuarios que crea `db:seed` (admin, manager y courier). |
 
 ## Arquitectura
 

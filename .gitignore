@@ -15,3 +15,6 @@ Thumbs.db
 
 # Node (solo para compilar Tailwind)
 node_modules/
+
+# Other
+REQ.md

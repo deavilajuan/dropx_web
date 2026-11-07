@@ -10,6 +10,15 @@ if (side && menuBtn) {
     });
 }
 
+// Mensajes de éxito o información ([data-autoclose]): se ocultan solos a los 4 segundos
+document.querySelectorAll('[data-autoclose]').forEach((alert) => {
+    setTimeout(() => {
+        alert.style.transition = 'opacity 0.5s';
+        alert.style.opacity = '0';
+        setTimeout(() => alert.remove(), 500);
+    }, 4000);
+});
+
 // Ventanas emergentes ([data-overlay]): se abren con data-open y se cierran con data-close, Escape o tocando el fondo
 function openOverlay(overlay) {
     overlay.classList.remove('hidden');
