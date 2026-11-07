@@ -1,7 +1,9 @@
+import csv
+import io
 from datetime import datetime, timedelta
 from functools import wraps
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -18,6 +20,9 @@ WEB_ROLES = ('admin', 'manager')
 # Meta mensual de entregas por repartidor
 MONTHLY_GOAL = 50
 
+# Zona de Cartagena donde se pueden marcar ubicaciones: ((lat. sur, long. oeste), (lat. norte, long. este))
+CARTAGENA_BOUNDS = ((10.25, -75.70), (10.55, -75.40))
+
 MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 # Campos de texto del formulario de paquetes
@@ -30,6 +35,26 @@ PACKAGE_REQUIRED_FIELDS = (
     'sender_name', 'sender_phone', 'origin_address',
     'recipient_name', 'recipient_phone', 'destination_address',
 )
+
+
+# Los mapas de las plantillas usan los mismos límites
+# Datos de un paquete para dibujarlo en los mapas (origen, destino y estado)
+def map_point(p):
+    return {
+        'number': p.tracking_number,
+        'status': p.status,
+        'label': p.status_label,
+        'from': [p.origin_lat, p.origin_lng],
+        'to': [p.destination_lat, p.destination_lng],
+        'origin': p.origin_address,
+        'destination': p.destination_address,
+        'url': url_for('suite.paquete', package_id=p.id),
+    }
+
+
+@bp.context_processor
+def map_bounds():
+    return {'cartagena_bounds': CARTAGENA_BOUNDS}
 
 
 # ---------- Ayudas ----------
@@ -195,6 +220,18 @@ def read_package_form():
     data['courier_id'] = form.get('courier_id', type=int)
     if data['courier_id'] and not User.query.filter_by(id=data['courier_id'], role='courier').first():
         return data, 'El repartidor seleccionado no existe.'
+
+    # Ubicaciones elegidas en el mapa (opcionales): latitud y longitud de origen y destino
+    for point in ('origin', 'destination'):
+        try:
+            lat, lng = form.get(f'{point}_lat', '').strip(), form.get(f'{point}_lng', '').strip()
+            data[f'{point}_lat'] = float(lat) if lat and lng else None
+            data[f'{point}_lng'] = float(lng) if lat and lng else None
+        except ValueError:
+            return data, 'La ubicación seleccionada en el mapa no es válida.'
+        lat, lng = data[f'{point}_lat'], data[f'{point}_lng']
+        if lat is not None and not (CARTAGENA_BOUNDS[0][0] <= lat <= CARTAGENA_BOUNDS[1][0] and CARTAGENA_BOUNDS[0][1] <= lng <= CARTAGENA_BOUNDS[1][1]):
+            return data, 'La ubicación seleccionada debe estar dentro de Cartagena.'
     return data, None
 
 
@@ -276,11 +313,21 @@ def nuevo_paquete():
     return package_form_page(None, {})
 
 
+# Firma de quien recibió el paquete (la guarda la app al entregar)
+@bp.route('/paquetes/<int:package_id>/firma')
+@login_required
+def firma(package_id):
+    package = db.get_or_404(Package, package_id)
+    if not package.signature_path.exists():
+        abort(404)
+    return send_file(package.signature_path, mimetype='image/png')
+
+
 @bp.route('/paquetes/<int:package_id>')
 @login_required
 def paquete(package_id):
     package = db.get_or_404(Package, package_id)
-    return render_template('suite/package.html', package=package)
+    return render_template('suite/package.html', package=package, map_point=map_point(package))
 
 
 # El manager y el administrador pueden editar paquetes
@@ -304,6 +351,8 @@ def editar_paquete(package_id):
         if new_status != package.status:
             package.status = new_status
             package.delivered_at = datetime.now() if new_status == 'delivered' else None
+            if new_status != 'issue':
+                package.issue_reason = None  # el motivo solo aplica mientras hay novedad
             add_event(package, STATUSES[new_status], f'Actualizado por {current_user.name}.')
 
         for field, value in data.items():
@@ -313,7 +362,7 @@ def editar_paquete(package_id):
         return redirect(url_for('suite.paquete', package_id=package.id))
 
     # GET: el formulario se llena con los datos actuales del paquete
-    values = {field: getattr(package, field) for field in (*PACKAGE_TEXT_FIELDS, 'weight', 'distance_km', 'is_urgent', 'courier_id', 'status')}
+    values = {field: getattr(package, field) for field in (*PACKAGE_TEXT_FIELDS, 'origin_lat', 'origin_lng', 'destination_lat', 'destination_lng', 'weight', 'distance_km', 'is_urgent', 'courier_id', 'status')}
     return package_form_page(package, values)
 
 
@@ -323,6 +372,7 @@ def editar_paquete(package_id):
 def eliminar_paquete(package_id):
     package = db.get_or_404(Package, package_id)
     tracking = package.tracking_number  # se guarda antes, porque luego el objeto ya no existe
+    package.signature_path.unlink(missing_ok=True)  # borra la firma, si tenía
     db.session.delete(package)
     db.session.commit()
     flash(f'Paquete {tracking} eliminado.', 'success')
@@ -500,10 +550,93 @@ def perfil():
     return render_template('suite/perfil.html')
 
 
-# ---------- Otras pantallas ----------
-# TO DO: Mapa de logísticos (próximas iteraciones).
+# ---------- Mapa de paquetes ----------
+# Muestra de dónde sale cada paquete y a dónde va (los que tienen ubicaciones en el mapa)
+@bp.route('/mapa')
+@login_required
+def mapa():
+    packages = (
+        Package.query.filter(Package.origin_lat.isnot(None), Package.destination_lat.isnot(None))
+        .order_by(Package.id.desc())
+        .limit(500)
+        .all()
+    )
+    return render_template('suite/mapa.html', points=[map_point(p) for p in packages])
+
+
+# ---------- Reportes (solo administrador) ----------
+REPORT_TYPES = {'paquetes': 'Paquetes', 'repartidores': 'Repartidores'}
+
+
+def parse_date(text, default):
+    try:
+        return datetime.strptime(text, '%Y-%m-%d')
+    except ValueError:
+        return default
+
+
+def build_report(kind, start, end, status):
+    """Devuelve (columnas, filas) del reporte, con los paquetes creados entre dos fechas (ambas incluidas)."""
+    in_range = (Package.created_at >= start, Package.created_at < end + timedelta(days=1))
+
+    if kind == 'repartidores':
+        columns = ['Repartidor', 'Asignados', 'Entregados', 'En ruta', 'Pendientes', 'Con novedad', 'Km entregados', 'Efectividad']
+        rows = []
+        for courier in User.query.filter_by(role='courier').order_by(User.name):
+            mine = Package.query.filter(Package.courier_id == courier.id, *in_range).all()
+            delivered = [p for p in mine if p.status == 'delivered']
+            rows.append([
+                courier.name,
+                len(mine),
+                len(delivered),
+                sum(p.status == 'picked_up' for p in mine),
+                sum(p.status == 'pending' for p in mine),
+                sum(p.status == 'issue' for p in mine),
+                round(sum(p.distance_km for p in delivered), 1),
+                f'{round(100 * len(delivered) / len(mine)) if mine else 0}%',
+            ])
+        return columns, rows
+
+    columns = ['Guía', 'Fecha', 'Estado', 'Remitente', 'Origen', 'Destinatario', 'Destino', 'Repartidor', 'Peso (kg)', 'Km', 'Urgente']
+    query = Package.query.filter(*in_range)
+    if status in STATUSES:
+        query = query.filter_by(status=status)
+    rows = [
+        [
+            p.tracking_number, p.created_at.strftime('%Y-%m-%d'), p.status_label,
+            p.sender_name, p.origin_address, p.recipient_name, p.destination_address,
+            p.courier.name if p.courier else 'Sin asignar', p.weight, p.distance_km, 'Sí' if p.is_urgent else 'No',
+        ]
+        for p in query.order_by(Package.created_at.desc())
+    ]
+    return columns, rows
+
+
 @bp.route('/reportes')
 @admin_required
 def reportes():
-    # TO DO: Generar los reportes (hoy es solo la interfaz).
-    return render_template('suite/reportes.html')
+    kind = request.args.get('tipo', 'paquetes')
+    if kind not in REPORT_TYPES:
+        kind = 'paquetes'
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    start = parse_date(request.args.get('desde', ''), today - timedelta(days=29))
+    end = parse_date(request.args.get('hasta', ''), today)
+    status = request.args.get('estado', '')
+    columns, rows = build_report(kind, start, end, status)
+
+    # Descarga en CSV (con BOM para que Excel respete las tildes)
+    if request.args.get('descargar'):
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(columns)
+        writer.writerows(rows)
+        return Response(
+            '\ufeff' + buffer.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename=reporte-{kind}-{start:%Y%m%d}-{end:%Y%m%d}.csv'},
+        )
+
+    return render_template(
+        'suite/reportes.html', kind=kind, types=REPORT_TYPES, columns=columns, rows=rows[:50], total=len(rows),
+        start=start.strftime('%Y-%m-%d'), end=end.strftime('%Y-%m-%d'), status=status,
+    )

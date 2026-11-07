@@ -4,6 +4,8 @@
 {% from '_macros.html' import input, icon with context %}
 {% block title %}{{ 'Editar ' ~ package.tracking_number if package else 'Nuevo paquete' }}{% endblock %}
 
+{% block head %}<link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}">{% endblock %}
+
 {% block content %}
 <a href="{{ url_for('suite.paquetes') }}" class="mb-2 inline-block font-semibold text-muted hover:text-ink">← Volver a paquetes</a>
 <div class="mb-5">
@@ -15,9 +17,9 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <div class="grid gap-4 lg:grid-cols-2">
-    {% for prefix, title, ico, address_field, address_label in [
-        ('sender', 'Remitente', 'i-send', 'origin_address', 'Dirección de origen'),
-        ('recipient', 'Destinatario', 'i-recv', 'destination_address', 'Dirección de destino'),
+    {% for prefix, title, ico, address_field, address_label, point in [
+        ('sender', 'Remitente', 'i-send', 'origin_address', 'Dirección de origen', 'origin'),
+        ('recipient', 'Destinatario', 'i-recv', 'destination_address', 'Dirección de destino', 'destination'),
     ] %}
         <div class="{{ ui.card }}">
             <div class="{{ ui.card_title }}">{{ icon(ico) }}{{ title }}</div>
@@ -26,6 +28,14 @@
                 {{ input(prefix ~ '_document', 'Documento', values.get(prefix ~ '_document'), placeholder='CC 1.100.000.000') }}
                 {{ input(prefix ~ '_phone', 'Teléfono', values.get(prefix ~ '_phone', ''), required=true) }}
                 <div class="sm:col-span-2">{{ input(address_field, address_label, values.get(address_field, ''), placeholder='Ej. Bocagrande, Cra. 2 #10-45', required=true) }}</div>
+                {# Ubicación en el mapa (opcional): maps.js guarda la latitud y la longitud en los campos ocultos #}
+                <div class="sm:col-span-2">
+                    <span class="{{ ui.label }}">Ubicación en el mapa (opcional)</span>
+                    <div data-map-picker data-bounds='{{ cartagena_bounds|tojson }}' data-address="{{ address_field }}" data-lat="{{ point }}_lat" data-lng="{{ point }}_lng" class="z-0 h-80 overflow-hidden rounded-xl border border-line"></div>
+                    <input type="hidden" id="{{ point }}_lat" name="{{ point }}_lat" value="{{ values.get(point ~ '_lat') if values.get(point ~ '_lat') is not none else '' }}">
+                    <input type="hidden" id="{{ point }}_lng" name="{{ point }}_lng" value="{{ values.get(point ~ '_lng') if values.get(point ~ '_lng') is not none else '' }}">
+                    <p class="{{ ui.hint }}">Toque el mapa para marcar el punto: la dirección se completa sola (puede corregirla).{% if point == 'destination' %} Con origen y destino, la distancia se calcula sola.{% endif %}</p>
+                </div>
             </div>
         </div>
     {% endfor %}
@@ -58,4 +68,9 @@
         <a class="{{ ui.btn_line }}" href="{{ url_for('suite.paquetes') }}">Cancelar</a>
     </div>
 </form>
+{% endblock %}
+
+{% block suite_scripts %}
+    <script src="{{ asset('vendor/leaflet/leaflet.js') }}"></script>
+    <script src="{{ asset('js/maps.js') }}"></script>
 {% endblock %}

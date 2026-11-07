@@ -5,19 +5,20 @@ La API es la que utiliza la app móvil [`dropx_app`](https://github.com/yammadev
 
 ## Capturas
 
-**Suite**
-
-| Dashboard | Paquetes |
-|---|---|
-| ![Dashboard](docs/screenshots/suite-dashboard.png) | ![Paquetes](docs/screenshots/suite-paquetes.png) |
-| **Detalle de un paquete** | **Repartidores** |
-| ![Detalle de paquete](docs/screenshots/suite-detalle.png) | ![Repartidores](docs/screenshots/suite-repartidores.png) |
-
 **Sitio público**
 
 | Inicio | Rastreo | Ser aliado |
 |---|---|---|
 | ![Inicio](docs/screenshots/sitio-inicio.png) | ![Rastreo](docs/screenshots/sitio-rastreo.png) | ![Ser aliado](docs/screenshots/sitio-ser-aliado.png) |
+
+**Suite**
+
+| Dashboard | Paquetes |
+|---|---|
+| ![Dashboard](docs/screenshots/suite-dashboard.png) | ![Paquetes](docs/screenshots/suite-paquetes.png) |
+| ![Nuevo paquete](docs/screenshots/suite-nuevo-paquete.png) | ![Detalle paquete](docs/screenshots/suite-detalle.png) |
+| ![Mapa](docs/screenshots/suite-mapa.png) | ![Repartidores](docs/screenshots/suite-repartidores.png) |
+| ![Managers](docs/screenshots/suite-managers.png) | ![Reportes](docs/screenshots/suite-reportes.png) |
 
 ## Instalación y prueba
 
@@ -55,7 +56,7 @@ El sitio queda en <http://127.0.0.1:5000> y la Suite en <http://127.0.0.1:5000/s
 | Jhon Doe | `courier@dropx.com` | `courier` |
 | Repartidores de prueba | `ana@dropx.com`, `carlos@dropx.com`, `luis@dropx.com`, `maria@dropx.com` | `courier` |
 
-Qué revisar: como `admin` se ven todas las secciones y se puede eliminar; como `manager` no aparecen Managers ni Reportes y no se puede eliminar; el rastreo público se prueba en <http://127.0.0.1:5000/rastreo> con una guía como `DX-000001`; y la API con Postman, como se explica en [docs/api.md](docs/api.md).
+Qué revisar: como `admin` se ven todas las secciones, se puede eliminar y en Reportes se ven y descargan (CSV) los reportes de paquetes y de repartidores; como `manager` no aparecen Managers ni Reportes y no se puede eliminar; al crear un paquete se marcan el origen y el destino en el mapa, y la sección Mapa los muestra; el rastreo público se prueba en <http://127.0.0.1:5000/rastreo> con una guía como `DX-000001`; y la API con Postman, como se explica en [docs/api.md](docs/api.md).
 
 ### Comandos
 
@@ -72,7 +73,7 @@ Al cambiar la `SECRET_KEY` se cierran las sesiones y los tokens vigentes.
 
 ### Cambiar el diseño (opcional, requiere Node.js)
 
-El CSS (`tailwind.css`) y Chart.js ya están generados en el repositorio. Solo si se cambian las clases de las plantillas o los colores de `app/static/css/input.css`, se vuelven a generar:
+El CSS (`tailwind.css`), Chart.js y Leaflet ya están generados en el repositorio. Solo si se cambian las clases de las plantillas o los colores de `app/static/css/input.css`, se vuelven a generar:
 
 ```bash
 npm install
@@ -118,7 +119,7 @@ Autenticación con JWT para la app móvil. Las rutas están documentadas en [doc
 - **`app/models.py`:** tablas `users`, `packages` y `package_events` (SQLAlchemy).
 - **`app/suite.py`, `app/public.py`, `app/api.py`:** rutas del panel, del sitio y de la API (un `Blueprint` por archivo).
 - **`app/commands.py`:** comandos `db:seed`, `db:test`, `db:fresh`, `db:upgrade`, `db:migrate` y `key:generate`.
-- **Diseño:** [Tailwind CSS](https://tailwindcss.com) v4: las clases van directamente en las plantillas, y los colores y la tipografía de la marca están en `app/static/css/input.css`. Las clases que se repiten (botones, tarjetas, campos) están en `app/templates/_ui.html` y los componentes en `_macros.html`. Iconos SVG y gráficas con Chart.js (instalado con npm y copiado a `static/js/vendor/`). Diseño claro, sin modo oscuro. La imagen del hero es una foto local (`static/img/hero-bodega.jpg`), por lo que no depende de internet.
+- **Diseño:** [Tailwind CSS](https://tailwindcss.com) v4: las clases van directamente en las plantillas, y los colores y la tipografía de la marca están en `app/static/css/input.css`. Las clases que se repiten (botones, tarjetas, campos) están en `app/templates/_ui.html` y los componentes en `_macros.html`. Iconos SVG, gráficas con Chart.js (copiado a `static/js/vendor/`) y mapas con [Leaflet](https://leafletjs.com) y OpenStreetMap (copiado a `static/vendor/leaflet/`), ambos instalados con npm. Diseño claro, sin modo oscuro. La imagen del hero es una foto local (`static/img/hero-bodega.jpg`), por lo que no depende de internet.
 - **Librerías:** Flask-SQLAlchemy y Flask-Migrate (base de datos y migraciones), Flask-Login (sesión del panel), Flask-JWT-Extended (API) y Flask-WTF (protección CSRF de los formularios).
 
 ## Estructura de carpetas
@@ -130,16 +131,17 @@ dropx_web/
 │   ├── models.py         # Tablas: users, packages y package_events
 │   ├── public.py         # Rutas del sitio público
 │   ├── suite.py          # Rutas del panel web (login, paquetes, repartidores, managers)
-│   ├── api.py            # Rutas de la API (login y me)
+│   ├── api.py            # Rutas de la API (login, paquetes y cambio de estado)
 │   ├── commands.py       # Comandos: db:seed, db:test, db:fresh, db:upgrade, db:migrate y key:generate
 │   ├── templates/
 │   │   ├── public/       # Páginas del sitio (base.html es el diseño común)
 │   │   └── suite/        # Páginas del panel (base.html es el diseño común)
 │   └── static/
 │       ├── css/          # input.css (colores y medidas de Tailwind) y tailwind.css (generado)
-│       ├── js/           # site.js (menú y video), suite.js (menú, ventanas), dashboard.js (gráficas) y vendor/chart.umd.js
+│       ├── js/           # site.js (menú y video), suite.js (menú, ventanas), dashboard.js (gráficas), maps.js (mapas) y vendor/chart.umd.js
+│       ├── vendor/       # leaflet/ (librería de mapas)
 │       └── img/          # Logos, video y foto del hero
-├── package.json          # Comandos de npm (Tailwind y Chart.js)
+├── package.json          # Comandos de npm (Tailwind, Chart.js y Leaflet)
 ├── docs/
 │   └── api.md            # Rutas de la API
 ├── migrations/           # Migraciones de la base de datos (Flask-Migrate)

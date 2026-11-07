@@ -4,6 +4,8 @@
 {% from '_macros.html' import status_badge, field, icon, pill with context %}
 {% block title %}{{ package.tracking_number }}{% endblock %}
 
+{% block head %}<link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}">{% endblock %}
+
 {% block content %}
 <a href="{{ url_for('suite.paquetes') }}" class="mb-2 inline-block font-semibold text-muted hover:text-ink">← Volver a paquetes</a>
 <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -41,8 +43,22 @@
                 {{ field('Creado', package.created_at.strftime('%d/%m/%Y %H:%M')) }}
                 {{ field('Actualizado', package.updated_at.strftime('%d/%m/%Y %H:%M')) }}
                 {{ field('Entregado', package.delivered_at.strftime('%d/%m/%Y %H:%M') if package.delivered_at else None) }}
+                {% if package.status == 'issue' %}{{ field('Motivo de la novedad', package.issue_reason or 'Sin motivo') }}{% endif %}
             </div>
+            {# Firma de quien recibió (la guarda la app al entregar) #}
+            {% if package.signature_path.exists() %}
+            <span class="mb-1.5 mt-4 block text-xs text-muted">Firma de quien recibe</span>
+            <img src="{{ url_for('suite.firma', package_id=package.id) }}" alt="Firma de quien recibe" class="h-32 rounded-xl border border-line bg-white">
+            {% endif %}
         </div>
+        {# Mapa con el origen y el destino (solo si el paquete tiene ubicaciones) #}
+        {% if package.origin_lat is not none and package.destination_lat is not none %}
+        <div class="border-t border-line pt-5">
+            <h2 class="mb-3 text-base font-extrabold">Ruta</h2>
+            <div id="packageMap" data-bounds='{{ cartagena_bounds|tojson }}' data-package='{{ map_point|tojson }}' class="z-0 h-80 overflow-hidden rounded-xl border border-line"></div>
+            <p class="{{ ui.hint }}">○ origen · ● destino</p>
+        </div>
+        {% endif %}
     </div>
     <div class="{{ ui.card }}">
         <h2 class="mb-4 text-base font-extrabold">Historial</h2>
@@ -61,4 +77,9 @@
         </ul>
     </div>
 </div>
+{% endblock %}
+
+{% block suite_scripts %}
+    <script src="{{ asset('vendor/leaflet/leaflet.js') }}"></script>
+    <script src="{{ asset('js/maps.js') }}"></script>
 {% endblock %}

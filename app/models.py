@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from flask import current_app
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -61,12 +64,19 @@ class Package(db.Model):
     sender_document = db.Column(db.String(30))  # ej: CC 1.100.000.000
     sender_phone = db.Column(db.String(30), nullable=False)
     origin_address = db.Column(db.String(255), nullable=False)
+    origin_lat = db.Column(db.Float)  # ubicación en el mapa (opcional)
+    origin_lng = db.Column(db.Float)
 
     # Quien recibe
     recipient_name = db.Column(db.String(120), nullable=False)
     recipient_document = db.Column(db.String(30))
     recipient_phone = db.Column(db.String(30), nullable=False)
     destination_address = db.Column(db.String(255), nullable=False)
+    destination_lat = db.Column(db.Float)
+    destination_lng = db.Column(db.Float)
+
+    # Motivo de la novedad (solo mientras el estado es "issue")
+    issue_reason = db.Column(db.String(100))
 
     # Repartidor asignado (vacío mientras no se asigne)
     courier_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'))
@@ -84,6 +94,11 @@ class Package(db.Model):
         cascade='all, delete-orphan',  # al borrar el paquete se borra su historial
     )
 
+    # La firma de quien recibe se guarda como imagen en instance/signatures/<id>.png
+    @property
+    def signature_path(self):
+        return Path(current_app.instance_path) / 'signatures' / f'{self.id}.png'
+
     @property
     def status_label(self):
         return STATUSES[self.status]
@@ -99,6 +114,11 @@ class Package(db.Model):
             'status': self.status,
             'originAddress': self.origin_address,
             'destinationAddress': self.destination_address,
+            'originLat': self.origin_lat,
+            'originLng': self.origin_lng,
+            'destinationLat': self.destination_lat,
+            'destinationLng': self.destination_lng,
+            'issueReason': self.issue_reason,
             'sender': {
                 'name': self.sender_name,
                 'document': self.sender_document,

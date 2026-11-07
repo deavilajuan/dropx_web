@@ -1,0 +1,35 @@
+{# Mapa con el origen y el destino de los paquetes (solo los que tienen ubicaciones elegidas en el mapa) #}
+{% extends 'suite/base.html' %}
+{% import '_ui.html' as ui %}
+{% from '_macros.html' import page_head %}
+{% block title %}Mapa{% endblock %}
+
+{% block head %}<link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}">{% endblock %}
+
+{% block content %}
+{% call page_head('Mapa de paquetes', 'De dónde salen y a dónde van') %}
+    <select id="mapFilter" class="{{ ui.input }} w-auto" aria-label="Filtrar por estado">
+        <option value="active">Activos (sin entregar)</option>
+        <option value="all">Todos</option>
+        {% for key, label in STATUSES.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+    </select>
+{% endcall %}
+
+<div class="{{ ui.card }} p-3">
+    {# Leyenda: cantidad de paquetes visibles por estado #}
+    <div class="mb-3 flex flex-wrap items-center gap-2 px-1 text-xs font-semibold">
+        <span class="mr-1 rounded-full bg-ink px-3 py-1 text-white"><b id="mapCount">0</b> en el mapa</span>
+        {% for key, label in STATUSES.items() %}
+        <span class="rounded-full px-3 py-1 {{ ui.status_tone[key] }}">{{ label }} <b data-count="{{ key }}">0</b></span>
+        {% endfor %}
+        <span class="ml-auto text-muted">○ origen · ● destino · toque un punto para ver la guía</span>
+    </div>
+    <div id="packagesMap" data-bounds='{{ cartagena_bounds|tojson }}' class="z-0 h-[calc(100vh-17rem)] min-h-[420px] overflow-hidden rounded-xl border border-line"></div>
+</div>
+<script type="application/json" id="map-data">{{ points|tojson }}</script>
+{% endblock %}
+
+{% block suite_scripts %}
+    <script src="{{ asset('vendor/leaflet/leaflet.js') }}"></script>
+    <script src="{{ asset('js/maps.js') }}"></script>
+{% endblock %}

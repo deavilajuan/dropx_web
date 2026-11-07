@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import click
+from flask import current_app
 from flask.cli import with_appcontext
 from flask_migrate import migrate, upgrade
 
@@ -32,11 +33,13 @@ TEST_COURIERS = [
     ('María Torres', 'maria@dropx.com', '310 456 7890'),
 ]
 
-# Barrios de Cartagena para las direcciones de prueba
-TEST_PLACES = [
-    'B/ Bocagrande', 'B/ Getsemaní', 'B/ Manga', 'B/ El Laguito', 'B/ Crespo',
-    'B/ Castillogrande', 'B/ Torices', 'B/ Pie de la Popa', 'B/ El Cabrero', 'B/ Los Alpes',
-]
+# Barrios de Cartagena para las direcciones de prueba, con su ubicación aproximada (latitud, longitud)
+TEST_PLACES = {
+    'B/ Bocagrande': (10.4020, -75.5560), 'B/ Getsemaní': (10.4229, -75.5460), 'B/ Manga': (10.4105, -75.5340),
+    'B/ El Laguito': (10.3900, -75.5640), 'B/ Crespo': (10.4450, -75.5190), 'B/ Castillogrande': (10.3960, -75.5590),
+    'B/ Torices': (10.4290, -75.5190), 'B/ Pie de la Popa': (10.4220, -75.5280), 'B/ El Cabrero': (10.4330, -75.5430),
+    'B/ Los Alpes': (10.3890, -75.4830),
+}
 TEST_PEOPLE = ['Laura Gómez', 'Harry Cruz', 'Sofía Mendoza', 'Juan Cruz', 'Carolina Díaz', 'Pedro Salas', 'Marta Rojas']
 
 
@@ -60,10 +63,13 @@ def create_users():
 
 
 def reset_database():
-    """Borra TODAS las tablas y las crea de nuevo con las migraciones."""
+    """Borra TODAS las tablas (y las firmas guardadas) y las crea de nuevo con las migraciones."""
+    # Las firmas de entrega son archivos en instance/signatures: sin sus paquetes ya no sirven
+    for signature in (Path(current_app.instance_path) / 'signatures').glob('*.png'):
+        signature.unlink()
     db.reflect()  # lee las tablas que existen en la base (incluida alembic_version)
     db.drop_all()  # las borra todas
-    click.echo('Tablas eliminadas.')
+    click.echo('Tablas y firmas eliminadas.')
     upgrade()  # vuelve a crearlas
 
 
@@ -113,6 +119,7 @@ def test_command(packages, yes):
         # La mitad de las entregas son de este mes, para que se vean en el dashboard
         if status == 'delivered' and rng.random() < 0.5:
             created = now - timedelta(days=rng.randint(0, max(now.day - 1, 1)), hours=rng.randint(3, 8))
+        origin, destination = rng.choice(list(TEST_PLACES)), rng.choice(list(TEST_PLACES))
         package = Package(
             tracking_number=f'DX-{number:06d}',
             weight=rng.choice([1.2, 2.5, 3.8, 5.5, 7, 9.5, 12, 15.5, 22.5]),
@@ -122,11 +129,16 @@ def test_command(packages, yes):
             sender_name=rng.choice(TEST_PEOPLE),
             sender_document='CC 1.100.000.000',
             sender_phone='300 500 00 00',
-            origin_address=f'Cl {rng.randint(1, 70)} # {rng.randint(1, 60)}-{rng.randint(1, 99)} - {rng.choice(TEST_PLACES)}',
+            origin_address=f'Cl {rng.randint(1, 70)} # {rng.randint(1, 60)}-{rng.randint(1, 99)} - {origin}',
+            origin_lat=TEST_PLACES[origin][0] + rng.uniform(-0.004, 0.004),
+            origin_lng=TEST_PLACES[origin][1] + rng.uniform(-0.004, 0.004),
             recipient_name=rng.choice(TEST_PEOPLE),
             recipient_document='CC 1.045.000.000',
             recipient_phone='311 200 00 00',
-            destination_address=f'Cr {rng.randint(1, 70)} # {rng.randint(1, 60)}-{rng.randint(1, 99)} - {rng.choice(TEST_PLACES)}',
+            destination_address=f'Cr {rng.randint(1, 70)} # {rng.randint(1, 60)}-{rng.randint(1, 99)} - {destination}',
+            destination_lat=TEST_PLACES[destination][0] + rng.uniform(-0.004, 0.004),
+            destination_lng=TEST_PLACES[destination][1] + rng.uniform(-0.004, 0.004),
+            issue_reason='Destinatario ausente' if status == 'issue' else None,
             courier_id=rng.choice(couriers).id,
             created_at=created,
             delivered_at=min(created + timedelta(hours=rng.randint(2, 30)), now) if status == 'delivered' else None,

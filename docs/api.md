@@ -74,6 +74,11 @@ Responde `200`:
       "status": "pending",
       "originAddress": "Calle 30 #12-45",
       "destinationAddress": "Getsemaní",
+      "originLat": 10.4105,
+      "originLng": -75.5340,
+      "destinationLat": 10.4229,
+      "destinationLng": -75.5460,
+      "issueReason": null,
       "sender": { "name": "Tienda Mar", "document": null, "phone": "300 000 0000" },
       "receiver": { "name": "Carolina Díaz", "document": null, "phone": "300 111 1111" },
       "updatedAt": "2026-11-06T10:30:00"
@@ -86,6 +91,8 @@ Responde `200`:
 |---|---|---|
 | `400` | El estado del filtro no existe | `{"message": "El estado no es válido"}` |
 | `401` | Falta el token, no es válido o expiró | ver `/api/auth/me` |
+
+Las coordenadas (`originLat`, `originLng`, `destinationLat`, `destinationLng`) son `null` si la guía no tiene ubicaciones elegidas en el mapa. `issueReason` solo trae valor cuando el estado es `issue`.
 
 ### `GET /api/packages/<id>`
 
@@ -101,6 +108,13 @@ Recibe:
 { "status": "picked_up" }
 ```
 
+Campos adicionales:
+
+| Campo | Cuándo | Descripción |
+|---|---|---|
+| `reason` | Obligatorio si `status` es `issue` | Motivo de la novedad (máximo 100 caracteres). |
+| `signature` | Opcional si `status` es `delivered` | Firma de quien recibe: imagen PNG en base64 (máximo 500 KB). Se guarda en `instance/signatures/` y se ve en el detalle del paquete de la Suite. |
+
 Cambios permitidos:
 
 | Estado actual | Puede pasar a |
@@ -115,6 +129,8 @@ Responde `200` con el paquete actualizado (`{"package": {...}}`).
 | Código | Cuándo | Respuesta |
 |---|---|---|
 | `400` | El estado no existe | `{"message": "El estado no es válido"}` |
+| `400` | Novedad sin motivo | `{"message": "Indique el motivo de la novedad"}` |
+| `400` | La firma no es un PNG válido | `{"message": "La firma no es válida"}` |
 | `404` | El paquete no existe o no está asignado al usuario | `{"message": "Paquete no encontrado"}` |
 | `409` | El cambio no está permitido | `{"message": "No se puede pasar de \"Entregado\" a \"Recogido\""}` |
 

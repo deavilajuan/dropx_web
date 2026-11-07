@@ -1,3 +1,5 @@
+import base64
+import binascii
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
@@ -67,6 +69,10 @@ def package_detail(package_id):
     return jsonify(package=item.to_dict())
 
 
+# La firma es una imagen PNG de máximo 500 KB
+PNG_HEADER = b'\x89PNG\r\n\x1a\n'
+MAX_SIGNATURE_BYTES = 500_000
+
 # Cambios de estado que puede hacer el repartidor: {estado actual: [estados permitidos]}
 TRANSITIONS = {
     'pending': ['picked_up', 'issue'],
@@ -85,15 +91,37 @@ def change_status(package_id):
     if not item:
         return jsonify(message='Paquete no encontrado'), 404
 
-    status = (request.get_json(silent=True) or {}).get('status')
+    payload = request.get_json(silent=True) or {}
+    status = payload.get('status')
     if status not in STATUSES:
         return jsonify(message='El estado no es válido'), 400
     if status not in TRANSITIONS[item.status]:
         return jsonify(message=f'No se puede pasar de "{STATUSES[item.status]}" a "{STATUSES[status]}"'), 409
 
+    # Una novedad necesita su motivo
+    reason = str(payload.get('reason') or '').strip()[:100]
+    if status == 'issue' and not reason:
+        return jsonify(message='Indique el motivo de la novedad'), 400
+
+    # La firma de quien recibe llega como imagen PNG en base64 (opcional)
+    signature = None
+    if status == 'delivered' and payload.get('signature'):
+        try:
+            signature = base64.b64decode(payload['signature'], validate=True)
+        except (binascii.Error, TypeError):
+            signature = b''
+        if not signature.startswith(PNG_HEADER) or len(signature) > MAX_SIGNATURE_BYTES:
+            return jsonify(message='La firma no es válida'), 400
+
     item.status = status
     item.delivered_at = datetime.now() if status == 'delivered' else None
-    item.events.append(PackageEvent(title=STATUSES[status], description=f'Actualizado por {courier.name}.'))
+    item.issue_reason = reason if status == 'issue' else None
+    description = f'{courier.name} reportó: {reason}.' if status == 'issue' else f'Actualizado por {courier.name}.'
+    if signature:
+        item.signature_path.parent.mkdir(parents=True, exist_ok=True)
+        item.signature_path.write_bytes(signature)
+        description = f'Entregado con firma de quien recibe ({courier.name}).'
+    item.events.append(PackageEvent(title=STATUSES[status], description=description))
     db.session.commit()
     return jsonify(package=item.to_dict())
 

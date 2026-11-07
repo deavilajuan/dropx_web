@@ -11,7 +11,7 @@
 
 <header class="sticky top-0 z-30 border-b border-line bg-white/90 backdrop-blur">
     <div class="{{ wrap }} flex h-[76px] items-center gap-4">
-        <a href="{{ url_for('public.index') }}" aria-label="DropX, inicio"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="DropX" class="h-12 w-auto"></a>
+        <a href="{{ url_for('public.index') }}" aria-label="DropX, inicio"><img src="{{ url_for('static', filename='img/Logo.png') }}" alt="DropX" class="h-12 w-auto"></a>
         {# Las secciones son anclas de la landing; Rastreo y Ser aliado son páginas aparte #}
         <nav class="mx-auto hidden items-center gap-1 md:flex">
             <a class="{{ nav_link }}" href="{{ url_for('public.index', _anchor='servicios') }}">Servicios</a>
@@ -49,7 +49,7 @@
     <div class="{{ wrap }}">
         <div class="grid gap-8 md:grid-cols-[2fr_1fr_1fr]">
             <div>
-                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="DropX" class="mb-3 h-[46px] w-auto">
+                <img src="{{ url_for('static', filename='img/Logo.png') }}" alt="DropX" class="mb-3 h-[46px] w-auto">
                 <p class="max-w-sm text-sm text-muted">Mensajería y logística en Cartagena de Indias: recogida, transporte y entrega con seguimiento en cada paso.</p>
             </div>
             <div>

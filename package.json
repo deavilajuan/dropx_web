@@ -5,11 +5,13 @@
     "css": "tailwindcss -i ./app/static/css/input.css -o ./app/static/css/tailwind.css --minify",
     "css:watch": "tailwindcss -i ./app/static/css/input.css -o ./app/static/css/tailwind.css --watch",
     "chart": "node -e \"require('fs').copyFileSync('node_modules/chart.js/dist/chart.umd.js', 'app/static/js/vendor/chart.umd.js')\"",
-    "build": "npm run css && npm run chart"
+    "build": "npm run css && npm run chart && npm run leaflet",
+    "leaflet": "node -e \"const fs=require('fs'),d='app/static/vendor/leaflet';fs.mkdirSync(d,{recursive:true});['leaflet.js','leaflet.css'].forEach(f=>fs.copyFileSync('node_modules/leaflet/dist/'+f,d+'/'+f));fs.cpSync('node_modules/leaflet/dist/images',d+'/images',{recursive:true})\""
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.0",
     "chart.js": "^4.4.7",
+    "leaflet": "^1.9.4",
     "tailwindcss": "^4.1.0"
   }
 }

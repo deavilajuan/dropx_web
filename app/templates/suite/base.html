@@ -13,13 +13,14 @@
     ('suite.dashboard', 'i-dash', 'Dashboard', false),
     ('suite.paquetes', 'i-box', 'Paquetes', false),
     ('suite.repartidores', 'i-bike', 'Repartidores', false),
+    ('suite.mapa', 'i-map', 'Mapa', false),
     ('suite.managers', 'i-user', 'Managers', true),
     ('suite.reportes', 'i-chart', 'Reportes', true),
 ] %}
 {% set package_pages = ('suite.nuevo_paquete', 'suite.paquete', 'suite.editar_paquete') %}
 {% set titles = {
     'suite.dashboard': 'Dashboard', 'suite.paquetes': 'Paquetes', 'suite.nuevo_paquete': 'Nuevo paquete',
-    'suite.paquete': 'Detalle', 'suite.editar_paquete': 'Editar paquete', 'suite.repartidores': 'Repartidores',
+    'suite.paquete': 'Detalle', 'suite.editar_paquete': 'Editar paquete', 'suite.repartidores': 'Repartidores', 'suite.mapa': 'Mapa',
     'suite.managers': 'Managers', 'suite.reportes': 'Reportes', 'suite.perfil': 'Mi perfil'
 } %}
 {% set link = 'relative flex items-center gap-3 rounded-xl px-3 py-2.5 font-semibold text-ink2 transition hover:bg-soft' %}
@@ -29,7 +30,7 @@
     {# En pantallas pequeñas el menú se oculta a la izquierda y suite.js lo muestra con el botón #}
     <aside id="side" class="fixed inset-y-0 left-0 z-40 flex w-[250px] -translate-x-full flex-col border-r border-line bg-white p-4 shadow-pop transition-transform md:sticky md:top-0 md:h-screen md:translate-x-0 md:shadow-none">
         {# El logo lleva al dashboard (no a la página pública) #}
-        <a href="{{ url_for('suite.dashboard') }}" class="px-2 pb-3 pt-1"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="DropX" class="h-11 w-auto"></a>
+        <a href="{{ url_for('suite.dashboard') }}" class="px-2 pb-3 pt-1"><img src="{{ url_for('static', filename='img/Logo.png') }}" alt="DropX" class="h-11 w-auto"></a>
         <div class="px-3 pb-1 pt-4 text-[11px] font-bold uppercase tracking-wider text-muted">Menú</div>
         <nav class="grid gap-1">
             {% for endpoint, ico, label, admin_only in menu %}
@@ -37,7 +38,6 @@
                     <a href="{{ url_for(endpoint) }}" class="{{ link_on if request.endpoint == endpoint or (endpoint == 'suite.paquetes' and request.endpoint in package_pages) else link }}">{{ icon(ico, 'size-[18px]') }}{{ label }}</a>
                 {% endif %}
             {% endfor %}
-            <a href="{{ url_for('public.index') }}" target="_blank" rel="noopener" class="{{ link }}">{{ icon('i-eye', 'size-[18px]') }}Ver sitio público</a>
         </nav>
         {# Usuario (lleva al perfil) y cierre de sesión #}
         <div class="mt-auto grid gap-2 rounded-2xl border border-line p-3">
@@ -46,6 +46,7 @@
                 <div class="min-w-0"><b class="block truncate">{{ current_user.name }}</b><span class="block truncate text-xs text-muted">{{ current_user.email }}</span></div>
             </a>
             <a href="{{ url_for('suite.logout') }}" class="{{ ui.btn_line }}">Cerrar sesión</a>
+            <a href="{{ url_for('public.index') }}" target="_blank" rel="noopener" class="{{ ui.btn_line }}">{{ icon('i-eye') }}Ver sitio público</a>
         </div>
     </aside>
 
