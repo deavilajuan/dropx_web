@@ -1,4 +1,5 @@
 import os
+import sqlite3
 from datetime import datetime
 from flask import Flask, url_for
 from flask_jwt_extended import JWTManager
@@ -6,6 +7,8 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import CSRFProtect
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 from config import Config
 
@@ -23,10 +26,18 @@ login_manager.login_message = 'Inicie sesión para acceder a la Suite logística
 login_manager.login_message_category = 'danger'
 
 
+@event.listens_for(Engine, 'connect')
+def enable_sqlite_foreign_keys(connection, record):
+    """SQLite no revisa las llaves foráneas si no se le pide (MySQL sí lo hace siempre)."""
+    if isinstance(connection, sqlite3.Connection):
+        connection.execute('PRAGMA foreign_keys=ON')
+
+
 def create_app():
     """Crea y configura la aplicación (patrón "application factory" de Flask)."""
     app = Flask(__name__)
     app.config.from_object(Config)
+    os.makedirs(app.instance_path, exist_ok=True)  # aquí viven el archivo SQLite y las firmas
 
     # Si falta la SECRET_KEY el sitio avisa cómo crearla. No se lanza un error al
     # arrancar para que el comando "flask --app app key:generate" pueda ejecutarse.
@@ -37,7 +48,7 @@ def create_app():
 
     # Conectar las extensiones a la app
     db.init_app(app)
-    migrate.init_app(app, db)
+    migrate.init_app(app, db, render_as_batch=True)  # SQLite no puede alterar columnas sin esto
     login_manager.init_app(app)
     jwt.init_app(app)
     csrf.init_app(app)

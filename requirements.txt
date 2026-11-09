@@ -6,4 +6,4 @@ Flask-JWT-Extended>=4.6
 Flask-WTF>=1.2
 PyMySQL>=1.1
 python-dotenv>=1.0
-# cryptography>=42  (solo si se usa MySQL 8 en vez de XAMPP/MariaDB)
+cryptography>=42  # MySQL 8 (Aiven) inicia sesión con caching_sha2_password y PyMySQL lo necesita

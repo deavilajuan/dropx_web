@@ -1,6 +1,6 @@
 # DropX Web
 
-Panel web, sitio público y API del proyecto DropX (mensajería y logística en Cartagena de Indias), desarrollados con Flask y MySQL.
+Panel web, sitio público y API del proyecto DropX (mensajería y logística en Cartagena de Indias), desarrollados con Flask, SQLite (desarrollo) y MySQL (producción).
 La API es la que utiliza la app móvil [`dropx_app`](https://github.com/yammadev/dropx_app).
 
 ## Capturas
@@ -25,7 +25,7 @@ La API es la que utiliza la app móvil [`dropx_app`](https://github.com/yammadev
 
 ## Instalación y prueba
 
-Requisitos: Python 3.10 o superior y MySQL encendido (en XAMPP, el módulo MySQL) con la base de datos `dropx` creada. No se necesita Node.
+**Requisitos:** Python 3.10 o superior. La base de datos local es un archivo SQLite (`instance/dropx.db`) que se crea solo, así que no hace falta instalar MySQL. No se necesita Node.
 
 Terminal de VS Code, un comando por línea:
 
@@ -46,6 +46,9 @@ Cambiar en el `.env` los nombres (`SEED_*_NAME`) y las contraseñas (`SEED_*_PAS
 # Datos de prueba y encender
 flask --app app db:test
 flask --app app run --debug
+
+# Encender en otro puerto (ej. 5001)
+flask --app app run --debug --port 5001
 ```
 
 `db:test` reinicia la base de datos (pide confirmación) y crea los usuarios iniciales, 4 repartidores y 40 paquetes con su historial. Con `--packages 100` cambia la cantidad de paquetes.
@@ -102,6 +105,17 @@ Toda la operación está limitada a Cartagena de Indias.
 Estados de una guía: **Pendiente**, **Recogido**, **Entregado** y **Con novedad**.
 El número de guía se asigna automáticamente al crear el paquete: el siguiente disponible, con el formato `DX-000001`.
 
+## Pruebas
+
+Las pruebas usan una base SQLite temporal, así que no tocan los datos de desarrollo:
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Cubren la API (login, estados, motivo de novedad y firma), la Suite (permisos, paquetes, límites de Cartagena y reportes), el sitio público y las migraciones desde cero.
+
 ## API
 
 Autenticación con JWT para la app móvil. Las rutas están documentadas en [docs/api.md](docs/api.md).
@@ -111,8 +125,9 @@ Autenticación con JWT para la app móvil. Las rutas están documentadas en [doc
 | Variable | Descripción |
 |---|---|
 | `SECRET_KEY` | Firma la sesión del panel y los tokens JWT. Obligatoria. |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Conexión a MySQL (por defecto, XAMPP local: `localhost`, `3306`, `root`, sin contraseña y `dropx`). |
-| `DB_SSL_CA` | Opcional. Ruta del certificado `.pem` para servicios en la nube que exigen SSL (ej: Aiven). |
+| `DB_CONNECTION` | `sqlite` (por defecto, archivo `instance/dropx.db`) o `mysql` (producción, ej: Aiven). |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Solo con `DB_CONNECTION=mysql`: conexión a MySQL (por defecto `localhost`, `3306`, `root`, sin contraseña y `dropx`). |
+| `DB_SSL_CA` | Opcional, solo MySQL. Ruta del certificado `.pem` para servicios en la nube que exigen SSL (ej: Aiven). |
 | `JWT_EXPIRES_HOURS` | Duración del token de la API (por defecto, 168 horas = 7 días). |
 | `WHATSAPP_ADVISOR_NUMBER` | Número del asesor para el formulario de contacto. |
 | `SEED_*_NAME`, `SEED_*_PASSWORD` | Nombres y contraseñas de los usuarios que crea `db:seed` (admin, manager y courier). |
@@ -129,12 +144,15 @@ Autenticación con JWT para la app móvil. Las rutas están documentadas en [doc
 
 ```
 dropx_web/
+├── .github/
+│   └── workflows/
+│       └── tests.yml     # GitHub Actions: corre las pruebas en cada push y pull request
 ├── app/
 │   ├── __init__.py       # Crea la app y conecta las extensiones
 │   ├── models.py         # Tablas: users, packages y package_events
-│   ├── public.py         # Rutas del sitio público
-│   ├── suite.py          # Rutas del panel web (login, paquetes, repartidores, managers)
-│   ├── api.py            # Rutas de la API (login, paquetes y cambio de estado)
+│   ├── public.py         # Rutas del sitio público (inicio, rastreo, ser aliado)
+│   ├── suite.py          # Rutas del panel web (login, paquetes, mapa, reportes, repartidores, managers)
+│   ├── api.py            # Rutas de la API (login, paquetes, cambio de estado y firma)
 │   ├── commands.py       # Comandos: db:seed, db:test, db:fresh, db:upgrade, db:migrate y key:generate
 │   ├── templates/
 │   │   ├── public/       # Páginas del sitio (base.html es el diseño común)
@@ -143,13 +161,21 @@ dropx_web/
 │       ├── css/          # input.css (colores y medidas de Tailwind) y tailwind.css (generado)
 │       ├── js/           # site.js (menú y video), suite.js (menú, ventanas), dashboard.js (gráficas), maps.js (mapas) y vendor/chart.umd.js
 │       ├── vendor/       # leaflet/ (librería de mapas)
-│       └── img/          # Logos, video y foto del hero
-├── package.json          # Comandos de npm (Tailwind, Chart.js y Leaflet)
+│       └── img/          # Logos, favicon, video y foto del hero
 ├── docs/
-│   └── api.md            # Rutas de la API
-├── migrations/           # Migraciones de la base de datos (Flask-Migrate)
+│   ├── api.md            # Rutas de la API
+│   └── screenshots/      # Capturas del README
+├── instance/             # Datos locales que no se suben a GitHub
+│   ├── dropx.db          # Base SQLite de desarrollo (se crea sola)
+│   └── signatures/       # Firmas de entrega (PNG), una por paquete
+├── migrations/
+│   └── versions/         # Migraciones de la base de datos (Flask-Migrate)
+├── tests/                # Pruebas con pytest: API, Suite, sitio público y migraciones
 ├── config.py             # Configuración (lee el .env)
+├── package.json          # Comandos de npm (Tailwind, Chart.js y Leaflet)
+├── pytest.ini            # Configuración de pytest
 ├── requirements.txt      # Dependencias de Python
+├── requirements-dev.txt  # Dependencias de Python más pytest (para las pruebas)
 ├── .env.example          # Modelo del .env (el .env real no se sube a GitHub)
 ├── .gitignore
 └── README.md             # Documentación
